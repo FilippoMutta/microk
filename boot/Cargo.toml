@@ -1,0 +1,14 @@
+[package]
+name = "boot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.64"
+bootloader = "0.11"
+ovmf-prebuilt = "0.1.0-alpha.1"
+mutta_os = { path = "..", artifact = "bin", target = "x86_64-unknown-none" }
+
+[build-dependencies]
+bootloader = "0.11"
+mutta_os = { path = "..", artifact = "bin", target = "x86_64-unknown-none" }
