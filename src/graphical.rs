@@ -9,8 +9,8 @@ use noto_sans_mono_bitmap::{BitmapHeight, FontWeight};
 
 use crate::logger::Color;
 
-const CORNERS_SIZE_RATION: f32 = 0.05;
-const PADDING: usize = 10;
+const CORNERS_SIZE_RATION: f32 = 0.01;
+const PADDING: usize = 14;
 
 static mut FRAMEBUFFER: Option<FrameBuffer> = None;
 
@@ -58,6 +58,7 @@ fn draw_test_colors(framebuffer: &mut FrameBuffer) {
     }
 }
 
+static LINE_IDX: AtomicUsize = AtomicUsize::new(0);
 pub fn write(display: impl Display, color: Color) {
     let framebuffer = if let Some(framebuffer) = unsafe { FRAMEBUFFER.as_mut() } {
         framebuffer
@@ -65,16 +66,21 @@ pub fn write(display: impl Display, color: Color) {
         return;
     };
 
-    static LINE_IDX: AtomicUsize = AtomicUsize::new(0);
 
     let corners_size = corners_size(framebuffer);
+    let width = framebuffer.info().width;
+    let height = framebuffer.info().height;
 
     let mut formatter = Formatter {
         framebuffer,
         x: PADDING + corners_size,
         y: PADDING + LINE_IDX.fetch_add(14, Ordering::SeqCst),
+        width,
+        height,
+        corners_size,
         color,
     };
+
     write!(formatter, "{display}").unwrap();
 }
 
@@ -82,15 +88,39 @@ struct Formatter<'a> {
     framebuffer: &'a mut FrameBuffer,
     x: usize,
     y: usize,
+    width: usize,
+    height: usize,
+    corners_size: usize,
     color: Color,
 }
 
 impl Write for Formatter<'_> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.chars() {
-            if self.x + 14 < self.framebuffer.info().width {
+            /// START OF PRECARIOUS PART
+            /// Scrolling mechanism:
+            /// It isn't perfect, but it works (for now)
+            if self.y + PADDING > self.height {
+                self.y = self.height - PADDING - 14;
+                let stride = self.framebuffer.info().stride;
+                let bpp = self.framebuffer.info().bytes_per_pixel;
+                for p in 0..(self.framebuffer.info().byte_len - stride * bpp * (14 )) {
+                    self.framebuffer.buffer_mut()[p] = self.framebuffer.buffer_mut()[p+stride*bpp*(14 )];
+                    self.framebuffer.buffer_mut()[p+stride*bpp*(14)] = 0;
+                }
+            }
+
+            /// END OF PRECARIOUS PART
+
+            if self.x + 24 < self.width - self.corners_size {
+                self.write_char(c);
+            } else {
+                self.x = PADDING + self.corners_size;
+                self.y = PADDING + LINE_IDX.fetch_add(14, Ordering::SeqCst);
                 self.write_char(c);
             }
+
+
         }
         Ok(())
     }
@@ -109,13 +139,11 @@ impl Formatter<'_> {
                     .unwrap()
                 });
 
-        let corners_size = corners_size(&self.framebuffer);
-
         // Calculate the bounding box for log messages.
         let top = PADDING;
-        let left = corners_size + PADDING;
-        let bottom = self.framebuffer.info().height - PADDING - 1;
-        let right = self.framebuffer.info().width - corners_size - PADDING - 1;
+        let left = self.corners_size + PADDING;
+        let bottom = self.height - PADDING - 1;
+        let right = self.width - self.corners_size - PADDING - 1;
 
         for (bits, y) in bitmap.bitmap().iter().zip(self.y..) {
             for (&intensity, x) in bits.iter().zip(self.x..) {

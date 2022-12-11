@@ -6,8 +6,15 @@ pub mod graphical;
 pub mod logger;
 pub mod interrupts;
 pub mod gdt;
+pub mod memory;
 
 use core::panic::PanicInfo;
+
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
 
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {
@@ -16,5 +23,5 @@ fn panic_handler(info: &PanicInfo) -> ! {
     log(format_args!("{info}"), Color::Red);
     log("[Hanging now...]", Color::Red);
 
-    loop {}
+    hlt_loop();
 }

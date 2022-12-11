@@ -27,6 +27,8 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     mutta_os::logger::init(framebuffer);
     println!("Started framebuffer.");
 
+    println!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
     println!("Loading the GDT...");
     mutta_os::gdt::init();
     println!("GDT loaded.");
@@ -35,7 +37,9 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     mutta_os::interrupts::init_idt();
     x86_64::instructions::interrupts::enable();
     println!("Interrupts loaded.");
-   
+    
+    todo!();
+
     println!("Parsing memory...");
     use x86_64::registers::control::Cr3;
 
@@ -95,7 +99,7 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     println!("RSDP addr: {:#018x}", rsdp_addr);
     println!("ACPI initialized.");
 
-    // PCI, SMP,XHCI, USB all TODO
+    // PCI, SMP, XHCI, USB all TODO
 
     println!("Bootup complete.");
 
@@ -119,6 +123,7 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
             boot_info.api_version.version_patch(),
             prelease_str
     );
+
 
     mutta_os::hlt_loop();
 }

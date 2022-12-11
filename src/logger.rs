@@ -28,6 +28,12 @@ pub fn log(display: impl Display, color: Color) {
     }
 }
 
+pub fn serial_write(display: impl Display) {
+    unsafe {
+        write!(SERIAL_PORT, "{}{display}\r\n", Color::White.escape_sequence()).unwrap();
+    }
+}
+
 pub fn printk(display: impl Display) {
     graphical::write(&display, Color::White);
 

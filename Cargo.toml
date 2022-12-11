@@ -9,8 +9,9 @@ edition = "2021"
 bootloader_api = "0.11"
 uart_16550 = "0.2.18"
 x86_64 = "0.14.10"
-pic8259 = "0.10.2"
 spin = "0.9.4"
+acpi = "4.1.1"
+#fat32 = "0.2.0"
 
 [dependencies.lazy_static]
 version = "1.4.0"
