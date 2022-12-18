@@ -12,6 +12,7 @@ use crate::logger::Color;
 const CORNERS_SIZE_RATION: f32 = 0.01;
 const PADDING: usize = 14;
 
+
 static mut FRAMEBUFFER: Option<FrameBuffer> = None;
 
 pub fn init_framebuffer(framebuffer: Option<FrameBuffer>) {
@@ -97,20 +98,31 @@ struct Formatter<'a> {
 impl Write for Formatter<'_> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.chars() {
-            /// START OF PRECARIOUS PART
-            /// Scrolling mechanism:
-            /// It isn't perfect, but it works (for now)
-            if self.y + PADDING > self.height {
-                self.y = self.height - PADDING - 14;
+            // START OF PRECARIOUS PART
+            // Scrolling mechanism:
+            // It isn't perfect, but it works (for now)
+            if self.y + 14 > self.height {
+                /*
                 let stride = self.framebuffer.info().stride;
                 let bpp = self.framebuffer.info().bytes_per_pixel;
                 for p in 0..(self.framebuffer.info().byte_len - stride * bpp * (14 )) {
                     self.framebuffer.buffer_mut()[p] = self.framebuffer.buffer_mut()[p+stride*bpp*(14 )];
                     self.framebuffer.buffer_mut()[p+stride*bpp*(14)] = 0;
-                }
-            }
+                }*/
+            
+            // END OF PRECARIOUS PART
+                self.y = self.height - 14 - PADDING;
 
-            /// END OF PRECARIOUS PART
+                let stride = self.framebuffer.info().stride;
+                let bpp = self.framebuffer.info().bytes_per_pixel;
+                let len = self.framebuffer.info().byte_len;
+                let buffer = self.framebuffer.buffer_mut();
+                buffer.copy_within(stride*bpp*(14)..len, 0);
+                for p in len - stride * bpp * (14)..len {
+                    buffer[p] = 0;
+                }
+
+            }
 
             if self.x + 24 < self.width - self.corners_size {
                 self.write_char(c);

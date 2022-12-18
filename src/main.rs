@@ -9,6 +9,9 @@ use bootloader_api::{
 };
 use mutta_os::{
     println,
+    memory::{
+        MemoryManager,
+    },
 };
 
 const CONFIG: BootloaderConfig = {
@@ -41,46 +44,16 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
 
     let (level_4_page_table, _) = Cr3::read();
     println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
-    let physical_memory_offset = boot_info
-        .physical_memory_offset
-        .into_option()
-        .expect("The bootloader should map all physical memory for us");
-    println!("Physical memory offset: {physical_memory_offset:#018x}");
+    
+    let mut mem_manager = MemoryManager::init(boot_info);
 
-    println!("Memory regions: {}", boot_info.memory_regions.len());
+    // Allocate some memory
+    //let ptr = mem_manager.alloc(1024).unwrap();
 
+    // Deallocate the memory
+    //mem_manager.dealloc(ptr).unwrap();
     // Merge contiguous memory regions of the same kind and log them.
-    boot_info
-        .memory_regions
-        .sort_unstable_by_key(|region| region.start);
-    let mut iter = boot_info.memory_regions.iter().copied();
-    if let Some(mut prev) = iter.next() {
-        for next in iter {
-            if prev.end != next.start || prev.kind != next.kind {
-                println!("{:#018x} - {:#018x}: {:?}", prev.start, prev.end, prev.kind);
-
-                prev = next;
-            } else {
-                prev.end = next.end;
-            }
-        }
-
-        println!("{:#018x} - {:#018x}: {:?}", prev.start, prev.end, prev.kind);
-    }
-
-    println!("Writing to usable memory regions");
-
-    for region in boot_info
-        .memory_regions
-        .iter()
-        .filter(|region| region.kind == MemoryRegionKind::Usable)
-    {
-        let addr = physical_memory_offset + region.start;
-        let size = region.end - region.start;
-        unsafe {
-            core::ptr::write_bytes(addr as *mut u8, 0x00, size as usize);
-        }
-    }
+    
     println!("Done parsing memory.");
     
     println!("Starting memory managment...");
