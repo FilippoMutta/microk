@@ -9,6 +9,8 @@ use bootloader_api::{
 };
 use mutta_os::{
     println,
+    print,
+    interrupts,
     memory::{
         MemoryManager,
     },
@@ -17,7 +19,11 @@ use mutta_os::{
 const CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
 
+    const STACK_SIZE: u64 = 1024 * 256;
+
+    config.kernel_stack_size = STACK_SIZE;
     config.mappings.physical_memory = Some(Mapping::Dynamic);
+    config.mappings.aslr = true;
 
     config
 };
@@ -30,12 +36,13 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     mutta_os::logger::init(framebuffer);
     println!("Started framebuffer.");
 
-    println!("Loading the GDT...");
+    print!("Loading the GDT...");
     mutta_os::gdt::init();
     println!("GDT loaded.");
 
-    println!("Loading interrupts...");
+    print!("Loading interrupts...");
     mutta_os::interrupts::init_idt();
+    unsafe { interrupts::PICS.lock().disable() };
     x86_64::instructions::interrupts::enable();
     println!("Interrupts loaded.");
    
@@ -47,26 +54,26 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     
     let mut mem_manager = MemoryManager::init(boot_info);
 
+/*    for region in mem_manager.regions {
+        let addr = mem_manager.physical_memory_offset + region.start;
+        let size = region.end - region.start;
+        println!("Region! Addr: {:#018x} Size: {:#018x}", addr, size);
+    }*/
+
     // Allocate some memory
-    //let ptr = mem_manager.alloc(1024).unwrap();
+//    let ptr = mem_manager.alloc(1024).unwrap();
 
     // Deallocate the memory
-    //mem_manager.dealloc(ptr).unwrap();
-    // Merge contiguous memory regions of the same kind and log them.
-    
-    println!("Done parsing memory.");
-    
-    println!("Starting memory managment...");
-    // TODO: Memory managment here
+//    mem_manager.dealloc(ptr).unwrap();
     println!("Memory managment initialized.");
 
-    println!("Loading ACPI...");
+    print!("Loading ACPI...");
     let rsdp_addr = boot_info
         .rsdp_addr
         .into_option()
         .expect("The bootloader should give us the address to ACPI rsdp.");
-    println!("RSDP addr: {:#018x}", rsdp_addr);
     println!("ACPI initialized.");
+    println!("RSDP addr: {:#018x}", rsdp_addr);
 
     // PCI, SMP,XHCI, USB all TODO
 
@@ -92,6 +99,8 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
             boot_info.api_version.version_patch(),
             prelease_str
     );
+
+    println!("Done.");
 
     mutta_os::hlt_loop();
 }
