@@ -9,7 +9,7 @@ use noto_sans_mono_bitmap::{BitmapHeight, FontWeight};
 
 use crate::logger::Color;
 
-const CORNERS_SIZE_RATION: f32 = 0.01;
+const CORNERS_SIZE_RATION: f32 = 0.05;
 const PADDING: usize = 14;
 
 
@@ -60,6 +60,7 @@ fn draw_test_colors(framebuffer: &mut FrameBuffer) {
 }
 
 static LINE_IDX: AtomicUsize = AtomicUsize::new(0);
+static COL_IDX: AtomicUsize = AtomicUsize::new(0);
 pub fn write(display: impl Display, color: Color) {
     let framebuffer = if let Some(framebuffer) = unsafe { FRAMEBUFFER.as_mut() } {
         framebuffer
@@ -74,8 +75,8 @@ pub fn write(display: impl Display, color: Color) {
 
     let mut formatter = Formatter {
         framebuffer,
-        x: PADDING + corners_size,
-        y: PADDING + LINE_IDX.fetch_add(14, Ordering::SeqCst),
+        x: PADDING + corners_size + COL_IDX.load(Ordering::SeqCst) + 14,
+        y: PADDING + LINE_IDX.load(Ordering::SeqCst),
         width,
         height,
         corners_size,
@@ -98,41 +99,43 @@ struct Formatter<'a> {
 impl Write for Formatter<'_> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.chars() {
-            // START OF PRECARIOUS PART
+            let mut skip: bool = false;
+            COL_IDX.fetch_add(14, Ordering::SeqCst);
+            if c == '\n' {
+                COL_IDX.store(0, Ordering::SeqCst);
+                self.x = PADDING + self.corners_size + COL_IDX.load(Ordering::SeqCst);
+                self.y = PADDING + LINE_IDX.fetch_add(14, Ordering::SeqCst);
+                skip = true;
+            } else if c == '\r' {
+                COL_IDX.store(0, Ordering::SeqCst);
+                self.x = PADDING + self.corners_size + COL_IDX.load(Ordering::SeqCst);
+                skip = true;
+            } else if self.x + 24 > self.width - self.corners_size {
+                COL_IDX.store(0, Ordering::SeqCst);
+                self.x = PADDING + self.corners_size + COL_IDX.load(Ordering::SeqCst);
+                self.y = PADDING + LINE_IDX.fetch_add(14, Ordering::SeqCst);
+            }
+
             // Scrolling mechanism:
             // It isn't perfect, but it works (for now)
             if self.y + 14 > self.height {
-                /*
-                let stride = self.framebuffer.info().stride;
-                let bpp = self.framebuffer.info().bytes_per_pixel;
-                for p in 0..(self.framebuffer.info().byte_len - stride * bpp * (14 )) {
-                    self.framebuffer.buffer_mut()[p] = self.framebuffer.buffer_mut()[p+stride*bpp*(14 )];
-                    self.framebuffer.buffer_mut()[p+stride*bpp*(14)] = 0;
-                }*/
-            
-            // END OF PRECARIOUS PART
-                self.y = self.height - 14 - PADDING;
-
+                LINE_IDX.fetch_sub(14, Ordering::SeqCst);
+                self.y = PADDING + LINE_IDX.load(Ordering::SeqCst);
                 let stride = self.framebuffer.info().stride;
                 let bpp = self.framebuffer.info().bytes_per_pixel;
                 let len = self.framebuffer.info().byte_len;
                 let buffer = self.framebuffer.buffer_mut();
                 buffer.copy_within(stride*bpp*(14)..len, 0);
                 for p in len - stride * bpp * (14)..len {
+                    // Slow
                     buffer[p] = 0;
                 }
 
             }
 
-            if self.x + 24 < self.width - self.corners_size {
-                self.write_char(c);
-            } else {
-                self.x = PADDING + self.corners_size;
-                self.y = PADDING + LINE_IDX.fetch_add(14, Ordering::SeqCst);
+            if !skip {
                 self.write_char(c);
             }
-
-
         }
         Ok(())
     }
