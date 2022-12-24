@@ -24,13 +24,13 @@ pub fn log(display: impl Display, color: Color) {
     graphical::write(&display, color);
 
     unsafe {
-        write!(SERIAL_PORT, "{}{display}\r\n", color.escape_sequence()).unwrap();
+        write!(SERIAL_PORT, "{}{display}", color.escape_sequence()).unwrap();
     }
 }
 
 pub fn serial_write(display: impl Display) {
     unsafe {
-        write!(SERIAL_PORT, "{}{display}\r\n", Color::White.escape_sequence()).unwrap();
+        write!(SERIAL_PORT, "{}{display}", Color::White.escape_sequence()).unwrap();
     }
 }
 
@@ -38,7 +38,7 @@ pub fn printk(display: impl Display) {
     graphical::write(&display, Color::White);
 
     unsafe {
-        write!(SERIAL_PORT, "{}{display}\r\n", Color::White.escape_sequence()).unwrap();
+        write!(SERIAL_PORT, "{}{display}", Color::White.escape_sequence()).unwrap();
     }
 }
 
@@ -49,8 +49,8 @@ macro_rules! print {
 
 #[macro_export]
 macro_rules! println {
-    () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+    () => ($crate::print!("\r\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\r\n", format_args!($($arg)*)));
 }
 
 impl Color {
