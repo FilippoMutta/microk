@@ -1,20 +1,18 @@
 use heapless::{
     Vec,
-    consts::U128,
+    consts::U512,
 };
 use bootloader_api::{
     BootInfo,
-    info::{MemoryRegion, MemoryRegionKind, Optional},
+    info::{MemoryRegion, MemoryRegionKind},
 };
 
 use crate::println;
 
-const MAX_REGIONS: usize = 128;
-
 pub struct MemoryManager {
-    memory_regions: usize,
-    regions: heapless::Vec<MemoryRegion, U128>,
-    total_size: usize,
+    pub total_size: u64,
+    pub physical_memory_offset: u64,
+    pub regions: heapless::Vec<MemoryRegion, U512>,
 }
 
 impl MemoryManager {
@@ -23,20 +21,20 @@ impl MemoryManager {
             .physical_memory_offset
             .into_option()
             .expect("The bootloader should map all physical memory for us");
-        
-        println!("Physical memory offset: {physical_memory_offset:#018x}");
 
-        let memory_regions = boot_info.memory_regions.len();
-        if memory_regions > MAX_REGIONS {
+        if boot_info.memory_regions.len() > 512 {
             panic!("Too much memory!");
         }
-        println!("Memory regions: {}", memory_regions);
+
+        println!("Physical memory offset: {physical_memory_offset:#018x}");
+
+        let total_size = boot_info.memory_regions.iter().map(|memory_regions| memory_regions.end - memory_regions.start).sum();
+        println!("Memory total size: {}MB", total_size / (1024 * 1024));
 
         boot_info
             .memory_regions
-            .sort_unstable_by_key(|region| region.start);
+            .sort_unstable_by_key(|memory_regions| memory_regions.start);
         
-
         let mut iter = boot_info.memory_regions.iter().copied();
         if let Some(mut prev) = iter.next() {
             for next in iter {
@@ -52,51 +50,33 @@ impl MemoryManager {
             println!("{:#018x} - {:#018x}: {:?}", prev.start, prev.end, prev.kind);
         }
 
-        println!("Writing to usable memory regions");
+        println!("Catalouging memory regions...");
+
+        let mut regions: heapless::Vec<MemoryRegion, U512> = Vec::new();
 
         for region in boot_info
             .memory_regions
             .iter()
             .filter(|region| region.kind == MemoryRegionKind::Usable)
         {
-            let addr = physical_memory_offset + region.start;
-            let size = region.end - region.start;
-            unsafe {
-                core::ptr::write_bytes(addr as *mut u8, 0x00, size as usize);
-            }
+            let result = regions.push(*region);
         }
-        /*let regions = boot_info
-            .memory_regions
-            .iter()
-            .map(|r| MemoryRegion {
-                start: r.start_addr,
-                size: r.size,
-            })
-            .collect();
-        let total_size = regions.iter().map(|r| r.size).sum();
-                MemoryManager {
-            memory_regions,
-            regions,
-            total_size
-        }*/
-
-
-        let regions: heapless::Vec<MemoryRegion, U128> = Vec::new();
-
+        
         MemoryManager {
-            memory_regions: 0,
+            total_size,
+            physical_memory_offset,
             regions,
-            total_size: 0,
         }
+
     }
 
     pub fn alloc(&mut self, size: usize) -> Result<*mut u8, &'static str> {
-        // TODO: Implement memory allocation here
-        unimplemented!();
+        // TODO: Implement memory deallocation here
+        unimplemented!("Alloc is not yet implemented");
     }
 
     pub fn dealloc(&mut self, ptr: *mut u8) -> Result<(), &'static str> {
         // TODO: Implement memory deallocation here
-        unimplemented!();
+        unimplemented!("Dealloc is not yet implemented");
     }
 }
