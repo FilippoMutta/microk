@@ -78,6 +78,10 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     // PCI, SMP,XHCI, USB all TODO
 
     println!("Bootup complete.");
+    
+    use pc_beeper::Speaker;
+    let mut speaker = Speaker::new();
+    speaker.beep(1000, 10);
 
     println!(" __  __  _                _  __        ___   ___ ");
     println!("|  \\/  |(_) __  _ _  ___ | |/ /       / _ \\ / __|");
