@@ -12,7 +12,6 @@ use crate::logger::Color;
 const CORNERS_SIZE_RATION: f32 = 0.05;
 const PADDING: usize = 14;
 
-
 static mut FRAMEBUFFER: Option<FrameBuffer> = None;
 
 pub fn init_framebuffer(framebuffer: Option<FrameBuffer>) {
@@ -118,19 +117,22 @@ impl Write for Formatter<'_> {
 
             // Scrolling mechanism:
             // It isn't perfect, but it works (for now)
-            if self.y + 14 > self.height {
+            if self.y + PADDING + 14 >= self.height {
                 LINE_IDX.fetch_sub(14, Ordering::SeqCst);
                 self.y = PADDING + LINE_IDX.load(Ordering::SeqCst);
                 let stride = self.framebuffer.info().stride;
                 let bpp = self.framebuffer.info().bytes_per_pixel;
                 let len = self.framebuffer.info().byte_len;
                 let buffer = self.framebuffer.buffer_mut();
+
                 buffer.copy_within(stride*bpp*(14)..len, 0);
-                for p in len - stride * bpp * (14)..len {
+
+                for p in stride * bpp * LINE_IDX.load(Ordering::SeqCst) * 14..len {
                     // Slow
                     buffer[p] = 0;
                 }
 
+                draw_test_colors(self.framebuffer);
             }
 
             if !skip {
