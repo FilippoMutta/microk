@@ -59,7 +59,7 @@ impl MemoryManager {
             .iter()
             .filter(|region| region.kind == MemoryRegionKind::Usable)
         {
-            let result = regions.push(*region);
+            regions.push(*region);
         }
         
         MemoryManager {
