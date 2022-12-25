@@ -19,11 +19,12 @@ use mutta_os::{
 const CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
 
-    const STACK_SIZE: u64 = 1024 * 256;
-
+    const STACK_SIZE: u64 = 1024 * 8192; // 8MB
+ 
+ 
     config.kernel_stack_size = STACK_SIZE;
     config.mappings.physical_memory = Some(Mapping::Dynamic);
-    config.mappings.aslr = true;
+    config.mappings.dynamic_range_start = Some(0xffff_8000_0000_0000);
 
     config
 };
@@ -54,17 +55,11 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     
     let mut mem_manager = MemoryManager::init(boot_info);
 
-/*    for region in mem_manager.regions {
-        let addr = mem_manager.physical_memory_offset + region.start;
-        let size = region.end - region.start;
-        println!("Region! Addr: {:#018x} Size: {:#018x}", addr, size);
-    }*/
-
     // Allocate some memory
-//    let ptr = mem_manager.alloc(1024).unwrap();
+    let ptr = mem_manager.alloc(1024).unwrap();
 
     // Deallocate the memory
-//    mem_manager.dealloc(ptr).unwrap();
+    mem_manager.dealloc(ptr).unwrap();
     println!("Memory managment initialized.");
 
     print!("Loading ACPI...");
